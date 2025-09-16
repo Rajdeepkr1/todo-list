@@ -1,139 +1,50 @@
-import {Injectable} from '@angular/core';
-
-import {init_tasks} from '../assets/todo-list.json';
-import {Task} from "../app/shared/models/task.model";
+import { Injectable } from '@angular/core';
+import { Task } from './shared/models/task.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TaskStorageService {
+  private storageKey = 'data';
 
-  tasks: Task[] = [];
-
-  /**
-   * Whether data have already been loaded from storage
-   */
-  initialized: boolean = false;
-
-  constructor() {
+  getAll(): Task[] {
+    const tasks = localStorage.getItem(this.storageKey);
+    return tasks ? JSON.parse(tasks) : [];
   }
 
-  /**
-   * Returns all tasks
-   */
-  getTasks(): Task[] {
-    this.init();
-    return this.tasks;
+  get(id: string | null): Task | undefined {
+    if (!id) return undefined;
+    const allTasks = this.getAll();
+    return allTasks.find(task => task.id === +id);
   }
 
-  /**
-   * Remove the tasks from the list
-   *
-   * @param index task index to remove
-   */
-  delete(id) {
-    let remaining_tasks: Task[] = [];
-    for (let i = 0; i < this.tasks.length; i++) {
-      var current_task = this.tasks[i];
+  add(title: string, note: string): Task {
+    const allTasks = this.getAll();
+    const newTask: Task = {
+      id: allTasks.length > 0 ? allTasks[allTasks.length - 1].id + 1 : 1,
+      title,
+      note
+    };
+    allTasks.push(newTask);
+    localStorage.setItem(this.storageKey, JSON.stringify(allTasks));
+    return newTask;
+  }
 
-      // we found the task to remove, we do not include it in our new array
-      if (id == current_task.id) {
-        console.log('Skipping tash[' + current_task.title + ']');
-        continue;
-      }
-
-      remaining_tasks.push(this.tasks[i]);
+  update(id: number, title: string, note: string): Task | undefined {
+    let allTasks = this.getAll();
+    const index = allTasks.findIndex(task => task.id === id);
+    if (index > -1) {
+      allTasks[index].title = title;
+      allTasks[index].note = note;
+      localStorage.setItem(this.storageKey, JSON.stringify(allTasks));
+      return allTasks[index];
     }
-    this.tasks = remaining_tasks;
-    return true;
+    return undefined;
   }
 
-  /**
-   * Return the task based in the given id
-   *
-   * @param id
-   */
-  get(id): Task {
-
-    this.init();
-
-    for (let i = 0; i < this.tasks.length; i++) {
-      let task = this.tasks[i];
-      // we found the task to remove, we do not include it in our new array
-      if (task.id != id) {
-        continue;
-      }
-      return task;
-    }
-
-    return null;
-  }
-
-  /**
-   * Create a new task based on the given data (+ generate a new id)
-   * @param title
-   * @param note
-   */
-  add(title, note) {
-    let task = new Task(title, note, this.getHighestId() + 1);
-    this.tasks.push(task);
-  }
-
-  /**
-   * Update the task and return it
-   *
-   * @param id
-   * @param title
-   * @param note
-   *
-   * @return Task
-   */
-  update(id, title: string, note: string): Task {
-
-    let task = this.get(id);
-    task.title = title;
-    task.note = note;
-
-    return task;
-  }
-
-  /**
-   * Load tasks from json file
-   */
-  init() {
-    if (this.initialized) {
-      console.log('Already initialized');
-      return;
-    }
-    console.log('Loading data from json file');
-
-    for (let i = 0; i < init_tasks.length; i++) {
-      this.tasks.push(
-        new Task(
-          init_tasks[i]['title'],
-          init_tasks[i]['note'],
-          init_tasks[i]['id'])
-      );
-    }
-
-    this.initialized = true;
-  }
-
-  /**
-   * Returns highest task id from our list.
-   */
-  getHighestId(): number {
-    let highest: number = 0;
-    this.init();
-    this.tasks.forEach(function (current_task: Task) {
-
-      if (current_task.id < highest) {
-        return;
-      }
-
-      highest = current_task.id;
-    });
-
-    return highest;
+  delete(id: number): void {
+    let allTasks = this.getAll();
+    allTasks = allTasks.filter(task => task.id !== id);
+    localStorage.setItem(this.storageKey, JSON.stringify(allTasks));
   }
 }
